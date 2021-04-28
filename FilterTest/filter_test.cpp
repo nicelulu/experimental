@@ -8,8 +8,7 @@
 #include <chrono>
 
 
-
-size_t filter(uint32_t * res, uint8_t * filter, size_t size, uint32_t * data)
+size_t filter(uint32_t * res, const uint8_t * filter, size_t size, const uint32_t * data)
 {
     uint32_t * begin_res = res;
     const uint8_t * filt_pos = filter;
@@ -30,11 +29,10 @@ size_t filter(uint32_t * res, uint8_t * filter, size_t size, uint32_t * data)
     return res - begin_res;
 }
 
-size_t filterSSE(uint32_t * res, uint8_t * filter, size_t size, uint32_t * data)
+size_t filterSSE(uint32_t * res, const uint8_t * filter, size_t size, const uint32_t * data)
 {
-    uint32_t * begin_res = res;
+    const uint32_t * begin_res = res;
     const uint8_t * filt_pos = filter;
-    const uint8_t * filt_end = filt_pos + size;
     const uint32_t * data_pos = data;
 
     static constexpr size_t SIMD_BYTES = 16;
