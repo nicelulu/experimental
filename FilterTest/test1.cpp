@@ -50,7 +50,7 @@ size_t filterSSE(T * res, const uint8_t * filter, size_t size, const T * data)
         }
         else if (0xFFFF == mask)
         {
-            memcpy(res, data_pos, 16 * 4);
+            memcpy(res, data_pos, 16 * sizeof(T));
             res += 16;
         }
         else
@@ -58,7 +58,7 @@ size_t filterSSE(T * res, const uint8_t * filter, size_t size, const T * data)
             for (size_t i = 0; i < SIMD_BYTES; ++i)
                 if (filt_pos[i])
                 {
-                    *res = *data_pos;
+                    *res = data_pos[i];
                     res++;
                 }
         }
@@ -76,6 +76,13 @@ uint64_t gen_random() noexcept {
     std::mt19937 gen(rd());
     static std::uniform_real_distribution<double> dis(0, 1);
     return std::ceil(dis(gen) * UINT64_MAX);
+}
+
+uint64_t gen_random1(size_t range) noexcept {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    static std::uniform_real_distribution<double> dis(0, 1);
+    return std::ceil(dis(gen) * range);
 }
 
 //int main(int argc, char ** argv) {
@@ -127,35 +134,41 @@ typedef struct Row
         uint64_t c;
     };
 } Row;
-/*!* Task 1. ** Find out all the rows that sastify below conditions: ** ((b >= 10 && b < 50) && * (a == 1000 || a == 2000 || a == 3000)) ** Print them to the terminal, one row per line, for example: ** 1000,20 * 1000,23 * 2000,16 ** @param nrows The total number of rows. * @param rows The rows, for example rows[0] is the first row. */
 // ((b >= 10 && b < 50) && * (a == 1000 || a == 2000 || a == 3000))
 
-uint8_t * test1(const Row *rows, int nrows)
-{
-    Row target1;
-    Row target2;
-    Row target3;
 
+Row target1;
+Row target2;
+Row target3;
+Row target1_end;
+Row target2_end;
+Row target3_end;
+
+void initTarget()
+{
     target1.a[0] = 1000;
     target1.a[1] = 10;
-    Row target1_end;
+
     target1_end.a[0] = 1000;
     target1_end.a[1] = 50;
 
     target2.a[0] = 2000;
     target2.a[1] = 10;
-    Row target2_end;
+
     target2_end.a[0] = 2000;
     target2_end.a[1] = 50;
 
     target3.a[0] = 3000;
     target3.a[1] = 10;
-    Row target3_end;
+
     target3_end.a[0] = 3000;
     target3_end.a[1] = 50;
+}
 
-    uint8_t * filter = new uint8_t[nrows];
 
+
+uint8_t * test1(uint8_t * filter, const Row *rows, int nrows)
+{
     size_t size = nrows;
     size_t i = 0;
     while (i < size)
@@ -168,37 +181,73 @@ uint8_t * test1(const Row *rows, int nrows)
     }
 
     return filter;
+}
 
-//    Row * res = new Row[nrows];
-//    filterSSE(res, filter, size, rows);
+size_t test11(Row * res, const Row *rows, int nrows)
+{
+    size_t size = nrows;
+    size_t i = 0;
+    while (i < size)
+    {
+        if ((rows[i].c >= target1.c && rows[i].c < target1_end.c) || (rows[i].c >= target2.c && rows[i].c < target2_end.c) || (rows[i].c >= target3.c && rows[i].c < target3_end.c))
+            res[i] = rows[i];
 
+        ++i;
+    }
+
+    return i;
 }
 
 int main(int argc, char ** argv) {
-    if (argc < 3)
+    if (argc < 4)
     {
-        std::cout << "error" << std::endl;
+        std::cout << "param size error" << std::endl;
         return 0;
     }
+    initTarget();
 
     int use_sse = atoi(argv[1]);
     size_t size = atoi(argv[2]);
+    size_t target_data_ratio = atoi(argv[3]);
 
-    Row * res = new Row[size];
+    std::cout << gen_random1(target_data_ratio) << "------------" << gen_random1(target_data_ratio) << std::endl;
+    std::cout << gen_random1(target_data_ratio) << "------------" << gen_random1(target_data_ratio) << std::endl;
+    std::cout << gen_random1(target_data_ratio) << "------------" << gen_random1(target_data_ratio) << std::endl;
+    std::cout << gen_random() << "------------" << gen_random() << std::endl;
+    std::cout << gen_random() << "------------" << gen_random() << std::endl;
+    std::cout << gen_random() << "------------" << gen_random() << std::endl;
 
     Row * data = new Row[size];
     for (size_t i = 0; i < size; ++i)
     {
-        data[i].c = gen_random();
+        if (gen_random1(target_data_ratio) == 1)
+        {
+            data[i].c = target1.c;
+        }
+        else
+        {
+            data[i].c = gen_random();
+        }
     }
 
-    uint8_t * filter = test1(data, size);
-    const auto start = std::chrono::high_resolution_clock::now();
+    auto * filter = new uint8_t[size];
+    Row * res = new Row[size];
     size_t res_size;
-    if (use_sse)
-        res_size = filterSSE(res, filter, size, data);
+    const auto start = std::chrono::high_resolution_clock::now();
+    if (use_sse == 2)
+    {
+        res_size = test11(res, data, size);
+    }
     else
-        res_size = filterMethod(res, filter, size, data);
+    {
+        filter = test1(filter, data, size);
+
+        if (use_sse)
+            res_size = filterSSE(res, filter, size, data);
+        else
+            res_size = filterMethod(res, filter, size, data);
+    }
+
     const std::chrono::duration<double> diff =
             std::chrono::high_resolution_clock::now() - start;
     std::cout << "Time: " << std::fixed << std::setprecision(6) << diff.count()

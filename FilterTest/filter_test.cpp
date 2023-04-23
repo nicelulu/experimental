@@ -90,7 +90,7 @@ int main(int argc, char ** argv) {
     uint32_t * res = new uint32_t[size];
     uint8_t * filt = new uint8_t[size];
     uint32_t * data = new uint32_t[size];
-    for (int i = 0; i < size; ++i)
+    for (size_t i = 0; i < size; ++i)
     {
         if (i % 32 < 16)
             filt[i] = 1;
