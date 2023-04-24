@@ -8,4 +8,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Weverything -Wno-reserved-ident
 add_subdirectory(FilterTest)
 add_subdirectory(InvalidLock)
 
-add_executable(main main.cpp)
+#add_executable(main main.cpp)
