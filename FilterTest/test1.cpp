@@ -57,7 +57,7 @@ size_t filterSSE(T * res, const uint8_t * filter, size_t size, const T * data)
         else if (0xFFFF == mask)
         {
             memcpy(res, data_pos, 16);
-            res += SIMD_BYTES/sizeof(T);
+            res += SIMD_BYTES;
         }
         else
         {
@@ -72,7 +72,63 @@ size_t filterSSE(T * res, const uint8_t * filter, size_t size, const T * data)
         }
 
         filt_pos += SIMD_BYTES;
-        data_pos += SIMD_BYTES/sizeof(T);
+        data_pos += SIMD_BYTES;
+    }
+
+    const uint8_t * filter_end = filter + size;
+    while (filt_pos < filter_end)
+    {
+        if (*filt_pos)
+        {
+            *res = *data_pos;
+            res++;
+        }
+        filt_pos++;
+        data_pos++;
+    }
+    return res - begin_res;
+}
+
+/*
+ * set result to res by filter array
+ */
+template <typename T>
+size_t filterAVX(T * res, const uint8_t * filter, size_t size, const T * data)
+{
+    const T * begin_res = res;
+    const uint8_t * filt_pos = filter;
+    const T * data_pos = data;
+
+    static constexpr size_t SIMD_BYTES = 32;
+    const __m256i zero32 = _mm256_setzero_si256();
+    const uint8_t * filt_end_sse = filt_pos + size / SIMD_BYTES * SIMD_BYTES;
+
+    while (filt_pos < filt_end_sse)
+    {
+        uint32_t mask = _mm256_movemask_epi8(_mm256_cmpeq_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i *>(filt_pos)), zero32));
+        mask = ~mask;
+        if (0 == mask)
+        {
+        }
+        else if (0xFFFFFFFF == mask)
+        {
+            memcpy(res, data_pos, 32);
+            res += SIMD_BYTES;
+        }
+        else
+        {
+            for (size_t i = 0; i < SIMD_BYTES; ++i)
+            {
+                if (filt_pos[i])
+                {
+                    *res = data_pos[i];
+                    res++;
+                }
+            }
+        }
+
+        filt_pos += SIMD_BYTES;
+        data_pos += SIMD_BYTES;
     }
 
     const uint8_t * filter_end = filter + size;
@@ -151,13 +207,13 @@ void initTarget()
 /*
  *  Generate filter array by condition
  */
-void genFilter(uint8_t * filter, const RowWapper *RowWappers, int nRowWappers)
+void genFilter(uint8_t * filter, const RowWapper * row_wappers, int nRowWappers)
 {
     size_t size = nRowWappers;
     size_t i = 0;
     while (i < size)
     {
-        if ((RowWappers[i].c > target1.c && RowWappers[i].c <= target1_end.c) || (RowWappers[i].c > target2.c && RowWappers[i].c <= target2_end.c) || (RowWappers[i].c > target3.c && RowWappers[i].c <= target3_end.c))
+        if ((row_wappers[i].c > target1.c && row_wappers[i].c <= target1_end.c) || (row_wappers[i].c > target2.c && row_wappers[i].c <= target2_end.c) || (row_wappers[i].c > target3.c && row_wappers[i].c <= target3_end.c))
             filter[i] = 1;
         else
             filter[i] = 0;
@@ -165,16 +221,16 @@ void genFilter(uint8_t * filter, const RowWapper *RowWappers, int nRowWappers)
     }
 }
 
-size_t testDirectly(RowWapper * res, const RowWapper *RowWappers, int nRowWappers)
+size_t testDirectly(RowWapper * res, const RowWapper * row_wappers, int nRowWappers)
 {
     RowWapper * res_pos = res;
     size_t size = nRowWappers;
     size_t i = 0;
     while (i < size)
     {
-        if ((RowWappers[i].c > target1.c && RowWappers[i].c <= target1_end.c) || (RowWappers[i].c > target2.c && RowWappers[i].c <= target2_end.c) || (RowWappers[i].c > target3.c && RowWappers[i].c <= target3_end.c))
+        if ((row_wappers[i].c > target1.c && row_wappers[i].c <= target1_end.c) || (row_wappers[i].c > target2.c && row_wappers[i].c <= target2_end.c) || (row_wappers[i].c > target3.c && row_wappers[i].c <= target3_end.c))
         {
-            *(res_pos) = RowWappers[i];
+            *(res_pos) = row_wappers[i];
             res_pos++;
         }
         ++i;
@@ -376,53 +432,68 @@ size_t testSSE(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
  * test result:
  *
  * root$ ./test1 10000000 1 32
- * testDirectly Time: 0.040526 sec res_size: 10000000
- * testAVX Time: 0.020299 sec res_size: 10000000
- * testSSE Time: 0.025267 sec res_size: 10000000
- * filterSSE Time: 0.014917 sec res_size: 1250000
- * filterMethod Time: 0.031336 sec res_size: 10000000
+ * testDirectly Time: 0.015622 sec res_size: 10000000
+ * testAVX Time: 0.014737 sec res_size: 10000000
+ * testSSE Time: 0.016422 sec res_size: 10000000
+ * filterAVX Time: 0.017115 sec res_size: 10000000
+ * filterSSE Time: 0.021388 sec res_size: 10000000
+ * filterMethod Time: 0.023430 sec res_size: 10000000
  *
  * root$ ./test1 10000000 2 32
- * testDirectly Time: 0.080006 sec res_size: 4999468
- * testAVX Time: 0.080077 sec res_size: 4999468
- * testSSE Time: 0.082656 sec res_size: 4999468
- * filterSSE Time: 0.066663 sec res_size: 4999286
- * filterMethod Time: 0.071108 sec res_size: 4999468
+ * testDirectly Time: 0.118058 sec res_size: 5000009
+ * testAVX Time: 0.062876 sec res_size: 5000009
+ * testSSE Time: 0.064128 sec res_size: 5000009
+ * filterAVX Time: 0.051724 sec res_size: 5000009
+ * filterSSE Time: 0.051664 sec res_size: 5000009
+ * filterMethod Time: 0.055166 sec res_size: 5000009
  *
  * root$ ./test1 10000000 4 32
- * testDirectly Time: 0.119982 sec res_size: 2500829
- * testAVX Time: 0.064328 sec res_size: 2500829
- * testSSE Time: 0.065427 sec res_size: 2500829
- * filterSSE Time: 0.047305 sec res_size: 2500829
- * filterMethod Time: 0.052566 sec res_size: 2500829
+ * testDirectly Time: 0.053950 sec res_size: 2500372
+ * testAVX Time: 0.052327 sec res_size: 2500372
+ * testSSE Time: 0.051610 sec res_size: 2500372
+ * filterAVX Time: 0.037639 sec res_size: 2500372
+ * filterSSE Time: 0.037248 sec res_size: 2500372
+ * filterMethod Time: 0.041703 sec res_size: 2500372
+ *
+ * root$ ./test1 10000000 8 32
+ * testDirectly Time: 0.035610 sec res_size: 1249591
+ * testAVX Time: 0.038011 sec res_size: 1249591
+ * testSSE Time: 0.032496 sec res_size: 1249591
+ * filterAVX Time: 0.026949 sec res_size: 1249591
+ * filterSSE Time: 0.027121 sec res_size: 1249591
+ * filterMethod Time: 0.030936 sec res_size: 1249591
  *
  * root$ ./test1 10000000 10 32
- * testDirectly Time: 0.050305 sec res_size: 999678
- * testAVX Time: 0.042722 sec res_size: 999678
- * testSSE Time: 0.041156 sec res_size: 999678
- * filterSSE Time: 0.031793 sec res_size: 999678
- * filterMethod Time: 0.035932 sec res_size: 999678
+ * testDirectly Time: 0.028327 sec res_size: 999717
+ * testAVX Time: 0.032776 sec res_size: 999717
+ * testSSE Time: 0.028572 sec res_size: 999717
+ * filterAVX Time: 0.025032 sec res_size: 999717
+ * filterSSE Time: 0.025067 sec res_size: 999717
+ * filterMethod Time: 0.028059 sec res_size: 999717
+ *
+ * root$ ./test1 10000000 15 32
+ * testDirectly Time: 0.096796 sec res_size: 665687
+ * testAVX Time: 0.025170 sec res_size: 665687
+ * testSSE Time: 0.023091 sec res_size: 665687
+ * filterAVX Time: 0.023990 sec res_size: 665687
+ * filterSSE Time: 0.023742 sec res_size: 665687
+ * filterMethod Time: 0.026712 sec res_size: 665687
+ *
+ * root$ ./test1 10000000 18 32
+ * testDirectly Time: 0.058699 sec res_size: 555783
+ * testAVX Time: 0.022826 sec res_size: 555783
+ * testSSE Time: 0.022162 sec res_size: 555783
+ * filterAVX Time: 0.023304 sec res_size: 555783
+ * filterSSE Time: 0.022978 sec res_size: 555783
+ * filterMethod Time: 0.026885 sec res_size: 555783
  *
  * root$ ./test1 10000000 20 32
- * testDirectly Time: 0.042080 sec res_size: 500663
- * testAVX Time: 0.021567 sec res_size: 500663
- * testSSE Time: 0.020563 sec res_size: 500663
- * filterSSE Time: 0.020600 sec res_size: 500663
- * filterMethod Time: 0.027372 sec res_size: 500663
- *
- * root$ ./test1 10000000 30 32
- * testDirectly Time: 0.040064 sec res_size: 333004
- * testAVX Time: 0.018102 sec res_size: 333004
- * testSSE Time: 0.018228 sec res_size: 333004
- * filterSSE Time: 0.018407 sec res_size: 333004
- * filterMethod Time: 0.027795 sec res_size: 333004
- *
- * root$ ./test1 10000000 50 32
- * testDirectly Time: 0.035152 sec res_size: 200006
- * testAVX Time: 0.015162 sec res_size: 200006
- * testSSE Time: 0.015852 sec res_size: 200006
- * filterSSE Time: 0.015518 sec res_size: 200006
- * filterMethod Time: 0.024990 sec res_size: 200006
+ * testDirectly Time: 0.027541 sec res_size: 499292
+ * testAVX Time: 0.021488 sec res_size: 499292
+ * testSSE Time: 0.020572 sec res_size: 499292
+ * filterAVX Time: 0.022963 sec res_size: 499292
+ * filterSSE Time: 0.022361 sec res_size: 499292
+ * filterMethod Time: 0.027231 sec res_size: 499292
  */
 
 int main(int argc, char ** argv)
@@ -493,6 +564,22 @@ int main(int argc, char ** argv)
         const std::chrono::duration<double> diff =
                 std::chrono::high_resolution_clock::now() - start;
         std::cout << "testSSE Time: " << std::fixed << std::setprecision(6) << diff.count()
+                  << " sec " << "res_size: " << res_size << std::endl;
+    }
+
+    /// filterAVX
+    {
+        RowWapper * aligned_res = static_cast<RowWapper *>(std::aligned_alloc(align, size * sizeof(RowWapper)));
+        std::vector<RowWapper> res(aligned_res, aligned_res + size);
+        std::vector<uint8_t> filter(size);
+
+        const auto start = std::chrono::high_resolution_clock::now();
+        genFilter(&filter[0], &data[0], size);
+        size_t res_size = filterAVX(&res[0], &filter[0], size, &data[0]);
+
+        const std::chrono::duration<double> diff =
+                std::chrono::high_resolution_clock::now() - start;
+        std::cout << "filterAVX Time: " << std::fixed << std::setprecision(6) << diff.count()
                   << " sec " << "res_size: " << res_size << std::endl;
     }
 
