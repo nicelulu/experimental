@@ -5,8 +5,7 @@
 #include <immintrin.h>
 #include <iomanip>
 #include <iostream>
-#include <random>
-#include <chrono>
+#include "Row.h"
 
 /*
  * set result to res by filter array
@@ -144,44 +143,6 @@ size_t filterAVX(T * res, const uint8_t * filter, size_t size, const T * data)
     }
     return res - begin_res;
 }
-
-uint64_t gen_random() noexcept {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    static std::uniform_real_distribution<double> dis(0, 1);
-    return std::ceil(dis(gen) * UINT64_MAX);
-}
-
-uint64_t gen_random1(size_t range) noexcept {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    static std::uniform_real_distribution<double> dis(0, 1);
-    return std::ceil(dis(gen) * range);
-}
-
-typedef struct Row
-{
-    int32_t a;
-    int32_t b;
-} Row;
-// ((b >= 10 && b < 50) && * (a == 1000 || a == 2000 || a == 3000))
-
-struct RowWapper
-{
-    union
-    {
-        Row row;
-        uint64_t c;
-    };
-};
-
-
-RowWapper target1;
-RowWapper target2;
-RowWapper target3;
-RowWapper target1_end;
-RowWapper target2_end;
-RowWapper target3_end;
 
 void initTarget()
 {

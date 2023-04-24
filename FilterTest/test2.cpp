@@ -1,30 +1,61 @@
 #include <iostream>
-#include <random>
-#include <chrono>
+#include "Row.h"
 
 
-typedef struct Row
+/*
+ * Find ranges >= l_target and <= r_target in the target array
+ */
+std::pair<int64_t, int64_t> find(uint64_t l_target, uint64_t r_target, const RowWapper * rows, int64_t begin, int64_t end)
 {
-    int32_t a;
-    int32_t b;
-} Row;
-// ((b >= 10 && b < 50) && * (a == 1000 || a == 2000 || a == 3000))
-
-struct RowWapper
-{
-    union
+    std::pair<int64_t, int64_t> res{-1, -1};
+    int64_t src_end = end;
+    while (begin <= end)
     {
-        Row row;
-        uint64_t c;
-    };
-};
+        int64_t mid = (end - begin) / 2 + begin; /// Tighten the right side, and when there are only 2 numbers, the mid should be left.
+        if (rows[mid].c == l_target)
+        {
+            end = mid;
 
-RowWapper target1;
-RowWapper target2;
-RowWapper target3;
-RowWapper target1_end;
-RowWapper target2_end;
-RowWapper target3_end;
+            if (end == begin)
+                break;
+        }
+        else if (rows[mid].c > l_target)
+        {
+            end = mid - 1;
+        }
+        else if (rows[mid].c < l_target)
+        {
+            begin = mid + 1;
+        }
+    }
+
+    res.first = begin;
+    end = src_end;
+    int64_t last_min = begin;
+    while (begin <= end)
+    {
+        int64_t mid = end - (end - begin) / 2; /// Tighten the left side, when there are only two numbers, the mid should be on the right.
+        if (rows[mid].c == r_target)
+        {
+            begin = mid;
+
+            if (end == begin)
+                break;
+        }
+        else if (rows[mid].c > r_target)
+        {
+            end = mid - 1;
+        }
+        else if (rows[mid].c < r_target)
+        {
+            last_min = mid;
+            begin = mid + 1;
+        }
+    }
+    res.second = rows[begin].c == r_target ? begin : last_min;
+
+    return res;
+}
 
 void initTarget()
 {
@@ -47,103 +78,14 @@ void initTarget()
     target3_end.row.b = 49;
 }
 
-uint64_t gen_random() noexcept {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    static std::uniform_real_distribution<double> dis(0, 1);
-    return std::ceil(dis(gen) * UINT64_MAX);
-}
-
-uint64_t gen_random1(size_t range) noexcept {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    static std::uniform_real_distribution<double> dis(0, 1);
-    return std::ceil(dis(gen) * range);
-}
-
-// 1000 1000 1000 1001
-std::pair<int64_t, int64_t> find(uint64_t l_target, uint64_t r_target, const RowWapper * rows, int64_t begin, int64_t end)
-{
-    int64_t src_end = end;
-    int64_t mid = -1;
-    std::pair<int64_t, int64_t> res{-1, -1};
-    int64_t pre_min_index = -1;
-    int64_t last_max_index = -1;
-    while (begin <= end)
-    {
-        if (l_target == rows[begin].c || (begin == end && l_target < rows[begin].c))
-        {
-            if (l_target == rows[begin].c)
-                res.first = begin;
-            
-            if (begin == end && l_target < rows[begin].c)
-                res.first = pre_min_index;
-
-            // begin find right
-            end = src_end;
-            begin = res.first;
-            while (begin <= end)
-            {
-                if (r_target == rows[end].c)
-                {
-                    res.second = end;
-                }
-
-                if (res.second != -1)
-                    break;
-
-                if (begin == end)
-                    break;
-
-                mid = (end - begin) / 2 + begin + 1;
-
-                if (r_target < rows[mid].c)
-                {
-                    end = mid - 1;
-                }
-                else if (r_target >= rows[mid].c)
-                {
-                    last_max_index = mid;
-                    begin = mid;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            if (res.second == -1)
-                res.second = last_max_index;
-        }
-
-        if (res.first != -1 && res.second != -1)
-            break;
-
-        if (begin == end)
-            break;
-
-
-        mid = (end - begin) / 2 + begin;
-        if (l_target <= rows[mid].c)
-        {
-            pre_min_index = mid;
-            end = mid;
-        }
-        else if (l_target > rows[mid].c)
-        {
-            begin = mid + 1;
-        }
-    }
-
-    return res;
-}
-
 int main(int, char ** argv)
 {
 
     size_t size = atoi(argv[1]);
     [[maybe_unused]]size_t target_data_ratio = atoi(argv[2]);
     size_t align = atoi(argv[3]);
+
+    initTarget();
 
     RowWapper * aligned_data = static_cast<RowWapper *>(std::aligned_alloc(align, size * sizeof(Row)));
 
@@ -161,25 +103,17 @@ int main(int, char ** argv)
 //            *(reinterpret_cast<uint64_t *>(&data[i].a)) = gen_random();
 //        }
 //    }
-//    data[0].row.a = 999;
-//    data[0].row.b = 47;
-//    for (size_t i = 1; i < size - 1; ++i)
-//    {
-//        data[i].row.a = 1000;
-//        data[i].row.b = 9 + i;
-//    }
-//    data[size - 1].row.a = 1001;
-//    data[size - 1].row.b = 47;
-    data[0].c = 1;
-    data[1].c = 3;
-    data[2].c = 5;
-    data[3].c = 7;
+    data[0].row.a = 1000;
+    data[0].row.b = 10;
 
-    auto [left0, right0] = find(2, 4, &data[0], 0, size - 1);
-    std::cout << left0 << ", " << right0 << std::endl;
+    for (size_t i = 1; i < size - 1; ++i)
+    {
+        data[i].row.a = 1000;
+        data[i].row.b = 10 + i;
+    }
+    data[size - 1].row.a = 1001;
+    data[size - 1].row.b = 47;
 
-    // 99947 100047 100047 100147
-    //                          100009      100049
     auto [left1, right1] = find(target1.c, target1_end.c, &data[0], 0, size - 1);
     std::cout << left1 << ", " << right1 << std::endl;
     auto [left2, right2] = find(target2.c, target2_end.c, &data[0], 0, size - 1);
