@@ -168,9 +168,9 @@ void initTarget()
 /*
  *  Generate filter array by condition
  */
-void genFilter(uint8_t * filter, const RowWapper * row_wappers, int nRowWappers)
+void genFilter(uint8_t * filter, const RowWapper * row_wappers, int row_size)
 {
-    size_t size = nRowWappers;
+    size_t size = row_size;
     size_t i = 0;
     while (i < size)
     {
@@ -182,10 +182,94 @@ void genFilter(uint8_t * filter, const RowWapper * row_wappers, int nRowWappers)
     }
 }
 
-size_t testDirectly(RowWapper * res, const RowWapper * row_wappers, int nRowWappers)
+void genFilterSSE(uint8_t * filter, const RowWapper * row_wappers, int row_size)
+{
+    uint8_t * filter_pos = filter;
+    size_t size = row_size;
+    size_t i = 0;
+
+    for (; i + 1 < size; i += 2)
+    {
+        const __m128i ones = _mm_set1_epi64x(-1);
+
+        const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(row_wappers + i));
+
+        const __m128i range1_l = _mm_set1_epi64x(target1.c);
+
+        const __m128i range1_r = _mm_set1_epi64x(target1_end.c);
+
+        const __m128i range2_l = _mm_set1_epi64x(target2.c);
+
+        const __m128i range2_r = _mm_set1_epi64x(target2_end.c);
+
+        const __m128i range3_l = _mm_set1_epi64x(target3.c);
+
+        const __m128i range3_r = _mm_set1_epi64x(target3_end.c);
+
+        const __m128i range1_l_res = _mm_cmpgt_epi64(data, range1_l);
+
+        const __m128i range1_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range1_r), ones);
+
+        const __m128i range1_res = _mm_and_si128(range1_l_res, range1_r_res);
+
+        const __m128i range2_l_res = _mm_cmpgt_epi64(data, range2_l);
+
+        const __m128i range2_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range2_r), ones);
+
+        const __m128i range2_res = _mm_and_si128(range2_l_res, range2_r_res);
+
+        const __m128i range3_l_res = _mm_cmpgt_epi64(data, range3_l);
+
+        const __m128i range3_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range3_r), ones);
+
+        const __m128i range3_res = _mm_and_si128(range3_l_res, range3_r_res);
+
+        const __m128i range_res = _mm_or_si128(range1_res, _mm_or_si128(range2_res, range3_res));
+
+        uint16_t range_res_mask = _mm_movemask_epi8(range_res);
+
+        if (0 == range_res_mask)
+        {
+            *reinterpret_cast<uint16_t *>(filter_pos) = 0;
+        }
+        else if (0xFFFF == range_res_mask)
+        {
+            *reinterpret_cast<uint16_t *>(filter_pos) = 1;
+        }
+        else
+        {
+            for (size_t j = 0; j < 2; ++j)
+            {
+                auto * mask = reinterpret_cast<uint8_t *>(&range_res_mask);
+                if (0xFF == mask[j])
+                {
+                    *(filter_pos + j) = 1;
+                }
+                else
+                {
+                    *(filter_pos + j) = 0;
+                }
+            }
+        }
+
+        filter_pos += 2;
+    }
+
+    for (; i < size; i++)
+    {
+        if ((row_wappers[i].c > target1.c && row_wappers[i].c <= target1_end.c) || (row_wappers[i].c > target2.c && row_wappers[i].c <= target2_end.c) || (row_wappers[i].c > target3.c && row_wappers[i].c <= target3_end.c))
+            *filter_pos = 1;
+        else
+            *filter_pos = 0;
+
+        filter_pos++;
+    }
+}
+
+size_t testDirectly(RowWapper * res, const RowWapper * row_wappers, int row_size)
 {
     RowWapper * res_pos = res;
-    size_t size = nRowWappers;
+    size_t size = row_size;
     size_t i = 0;
     while (i < size)
     {
@@ -216,16 +300,16 @@ void print(__m256i var)
 /*
  *  set result to res by condition
  */
-size_t testAVX(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
+size_t testAVX(RowWapper * res, const RowWapper * row_wappers, int row_size)
 {
     RowWapper * res_pos = res;
-    size_t size = nRowWappers;
+    size_t size = row_size;
     size_t i = 0;
     for (; i + 3 < size; i += 4)
     {
         const __m256i ones = _mm256_set1_epi64x(-1);
 //        print(ones);
-        const __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(RowWappers + i));
+        const __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(row_wappers + i));
 //        print(data);
         const __m256i range1_l = _mm256_set1_epi64x(target1.c);
 //        print(range1_l);
@@ -272,7 +356,7 @@ size_t testAVX(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
         }
         else if (0xFFFFFFFF == range_res_mask)
         {
-            memcpy(res_pos, RowWappers + i, 4 * sizeof(RowWapper));
+            memcpy(res_pos, row_wappers + i, 4 * sizeof(RowWapper));
             res_pos += 4;
         }
         else
@@ -282,7 +366,7 @@ size_t testAVX(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
                 auto * filter = reinterpret_cast<uint8_t *>(&range_res_mask);
                 if (filter[j])
                 {
-                    *(res_pos) = *(RowWappers + i + j);
+                    *(res_pos) = *(row_wappers + i + j);
                     res_pos++;
                 }
             }
@@ -291,9 +375,9 @@ size_t testAVX(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
 
     for (; i < size; i++)
     {
-        if ((RowWappers[i].c > target1.c && RowWappers[i].c <= target1_end.c) || (RowWappers[i].c > target2.c && RowWappers[i].c <= target2_end.c) || (RowWappers[i].c > target3.c && RowWappers[i].c <= target3_end.c))
+        if ((row_wappers[i].c > target1.c && row_wappers[i].c <= target1_end.c) || (row_wappers[i].c > target2.c && row_wappers[i].c <= target2_end.c) || (row_wappers[i].c > target3.c && row_wappers[i].c <= target3_end.c))
         {
-            *(res_pos) = RowWappers[i];
+            *(res_pos) = row_wappers[i];
             res_pos++;
         }
     }
@@ -304,16 +388,16 @@ size_t testAVX(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
 /*
  *  set result to res by condition
  */
-size_t testSSE(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
+size_t testSSE(RowWapper * res, const RowWapper * row_wappers, int row_size)
 {
     RowWapper * res_pos = res;
-    size_t size = nRowWappers;
+    size_t size = row_size;
     size_t i = 0;
     for (; i + 1 < size; i += 2)
     {
         const __m128i ones = _mm_set1_epi64x(-1);
 //        print(ones);
-        const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(RowWappers + i));
+        const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(row_wappers + i));
 //        print(data);
         const __m128i range1_l = _mm_set1_epi64x(target1.c);
 //        print(range1_l);
@@ -360,7 +444,7 @@ size_t testSSE(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
         }
         else if (0xFFFF == range_res_mask)
         {
-            memcpy(res_pos, RowWappers + i, 2 * sizeof(RowWapper));
+            memcpy(res_pos, row_wappers + i, 2 * sizeof(RowWapper));
             res_pos += 2;
         }
         else
@@ -370,7 +454,7 @@ size_t testSSE(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
                 auto * filter = reinterpret_cast<uint8_t *>(&range_res_mask);
                 if (filter[j])
                 {
-                    *(res_pos) = *(RowWappers + i + j);
+                    *(res_pos) = *(row_wappers + i + j);
                     res_pos++;
                 }
             }
@@ -379,9 +463,9 @@ size_t testSSE(RowWapper * res, const RowWapper * RowWappers, int nRowWappers)
 
     for (; i < size; i++)
     {
-        if ((RowWappers[i].c > target1.c && RowWappers[i].c <= target1_end.c) || (RowWappers[i].c > target2.c && RowWappers[i].c <= target2_end.c) || (RowWappers[i].c > target3.c && RowWappers[i].c <= target3_end.c))
+        if ((row_wappers[i].c > target1.c && row_wappers[i].c <= target1_end.c) || (row_wappers[i].c > target2.c && row_wappers[i].c <= target2_end.c) || (row_wappers[i].c > target3.c && row_wappers[i].c <= target3_end.c))
         {
-            *(res_pos) = RowWappers[i];
+            *(res_pos) = row_wappers[i];
             res_pos++;
         }
     }
@@ -535,7 +619,7 @@ int main(int argc, char ** argv)
         std::vector<uint8_t> filter(size);
 
         const auto start = std::chrono::high_resolution_clock::now();
-        genFilter(&filter[0], &data[0], size);
+        genFilterSSE(&filter[0], &data[0], size);
         size_t res_size = filterAVX(&res[0], &filter[0], size, &data[0]);
 
         const std::chrono::duration<double> diff =
@@ -551,7 +635,7 @@ int main(int argc, char ** argv)
         std::vector<uint8_t> filter(size);
 
         const auto start = std::chrono::high_resolution_clock::now();
-        genFilter(&filter[0], &data[0], size);
+        genFilterSSE(&filter[0], &data[0], size);
         size_t res_size = filterSSE(&res[0], &filter[0], size, &data[0]);
 
         const std::chrono::duration<double> diff =
