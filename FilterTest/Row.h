@@ -28,6 +28,9 @@ struct RowWapper
         Row row;
         uint64_t c;
     };
+
+    friend bool operator < (const RowWapper & a1, const RowWapper & a2)
+    { return a1.row.b < a2.row.b; }
 };
 
 RowWapper target1;

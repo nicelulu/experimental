@@ -188,23 +188,17 @@ void genFilterSSE(uint8_t * filter, const RowWapper * row_wappers, int row_size)
     size_t size = row_size;
     size_t i = 0;
 
+    const __m128i ones = _mm_set1_epi64x(-1);
+    const __m128i range1_l = _mm_set1_epi64x(target1.c);
+    const __m128i range1_r = _mm_set1_epi64x(target1_end.c);
+    const __m128i range2_l = _mm_set1_epi64x(target2.c);
+    const __m128i range2_r = _mm_set1_epi64x(target2_end.c);
+    const __m128i range3_l = _mm_set1_epi64x(target3.c);
+    const __m128i range3_r = _mm_set1_epi64x(target3_end.c);
+
     for (; i + 1 < size; i += 2)
     {
-        const __m128i ones = _mm_set1_epi64x(-1);
-
         const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(row_wappers + i));
-
-        const __m128i range1_l = _mm_set1_epi64x(target1.c);
-
-        const __m128i range1_r = _mm_set1_epi64x(target1_end.c);
-
-        const __m128i range2_l = _mm_set1_epi64x(target2.c);
-
-        const __m128i range2_r = _mm_set1_epi64x(target2_end.c);
-
-        const __m128i range3_l = _mm_set1_epi64x(target3.c);
-
-        const __m128i range3_r = _mm_set1_epi64x(target3_end.c);
 
         const __m128i range1_l_res = _mm_cmpgt_epi64(data, range1_l);
 
@@ -310,51 +304,41 @@ size_t testAVX(RowWapper * res, const RowWapper * row_wappers, int row_size)
     RowWapper * res_pos = res;
     size_t size = row_size;
     size_t i = 0;
+
+    const __m256i ones = _mm256_set1_epi64x(-1);
+    const __m256i range1_l = _mm256_set1_epi64x(target1.c);
+    const __m256i range1_r = _mm256_set1_epi64x(target1_end.c);
+    const __m256i range2_l = _mm256_set1_epi64x(target2.c);
+    const __m256i range2_r = _mm256_set1_epi64x(target2_end.c);
+    const __m256i range3_l = _mm256_set1_epi64x(target3.c);
+    const __m256i range3_r = _mm256_set1_epi64x(target3_end.c);
+
     for (; i + 3 < size; i += 4)
     {
-        const __m256i ones = _mm256_set1_epi64x(-1);
-//        print(ones);
         const __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(row_wappers + i));
-//        print(data);
-        const __m256i range1_l = _mm256_set1_epi64x(target1.c);
-//        print(range1_l);
-        const __m256i range1_r = _mm256_set1_epi64x(target1_end.c);
-//        print(range1_r);
-        const __m256i range2_l = _mm256_set1_epi64x(target2.c);
-//        print(range2_l);
-        const __m256i range2_r = _mm256_set1_epi64x(target2_end.c);
-//        print(range2_r);
-        const __m256i range3_l = _mm256_set1_epi64x(target3.c);
-//        print(range3_l);
-        const __m256i range3_r = _mm256_set1_epi64x(target3_end.c);
-//        print(range3_r);
 
         const __m256i range1_l_res = _mm256_cmpgt_epi64(data, range1_l);
-//        print(range1_l_res);
+
         const __m256i range1_r_res = _mm256_xor_si256(_mm256_cmpgt_epi64(data, range1_r), ones);
-//        print(range1_r_res);
+
         const __m256i range1_res = _mm256_and_si256(range1_l_res, range1_r_res);
-//        print(range1_res);
 
         const __m256i range2_l_res = _mm256_cmpgt_epi64(data, range2_l);
-//        print(range2_l_res);
+
         const __m256i range2_r_res = _mm256_xor_si256(_mm256_cmpgt_epi64(data, range2_r), ones);
-//        print(range2_r_res);
+
         const __m256i range2_res = _mm256_and_si256(range2_l_res, range2_r_res);
-//        print(range2_res);
 
         const __m256i range3_l_res = _mm256_cmpgt_epi64(data, range3_l);
-//        print(range3_l_res);
+
         const __m256i range3_r_res = _mm256_xor_si256(_mm256_cmpgt_epi64(data, range3_r), ones);
-//        print(range3_r_res);
+
         const __m256i range3_res = _mm256_and_si256(range3_l_res, range3_r_res);
-//        print(range3_res);
 
         const __m256i range_res = _mm256_or_si256(range1_res, _mm256_or_si256(range2_res, range3_res));
-//        print(range_res);
 
         uint32_t range_res_mask = _mm256_movemask_epi8(range_res);
-//        std::cout << "range_res_mask: " << range_res_mask << std::endl;
+
         if (0 == range_res_mask)
         {
 
@@ -398,51 +382,41 @@ size_t testSSE(RowWapper * res, const RowWapper * row_wappers, int row_size)
     RowWapper * res_pos = res;
     size_t size = row_size;
     size_t i = 0;
+
+    const __m128i ones = _mm_set1_epi64x(-1);
+    const __m128i range1_l = _mm_set1_epi64x(target1.c);
+    const __m128i range1_r = _mm_set1_epi64x(target1_end.c);
+    const __m128i range2_l = _mm_set1_epi64x(target2.c);
+    const __m128i range2_r = _mm_set1_epi64x(target2_end.c);
+    const __m128i range3_l = _mm_set1_epi64x(target3.c);
+    const __m128i range3_r = _mm_set1_epi64x(target3_end.c);
+
     for (; i + 1 < size; i += 2)
     {
-        const __m128i ones = _mm_set1_epi64x(-1);
-//        print(ones);
         const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(row_wappers + i));
-//        print(data);
-        const __m128i range1_l = _mm_set1_epi64x(target1.c);
-//        print(range1_l);
-        const __m128i range1_r = _mm_set1_epi64x(target1_end.c);
-//        print(range1_r);
-        const __m128i range2_l = _mm_set1_epi64x(target2.c);
-//        print(range2_l);
-        const __m128i range2_r = _mm_set1_epi64x(target2_end.c);
-//        print(range2_r);
-        const __m128i range3_l = _mm_set1_epi64x(target3.c);
-//        print(range3_l);
-        const __m128i range3_r = _mm_set1_epi64x(target3_end.c);
-//        print(range3_r);
 
         const __m128i range1_l_res = _mm_cmpgt_epi64(data, range1_l);
-//        print(range1_l_res);
+
         const __m128i range1_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range1_r), ones);
-//        print(range1_r_res);
+
         const __m128i range1_res = _mm_and_si128(range1_l_res, range1_r_res);
-//        print(range1_res);
 
         const __m128i range2_l_res = _mm_cmpgt_epi64(data, range2_l);
-//        print(range2_l_res);
+
         const __m128i range2_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range2_r), ones);
-//        print(range2_r_res);
+
         const __m128i range2_res = _mm_and_si128(range2_l_res, range2_r_res);
-//        print(range2_res);
 
         const __m128i range3_l_res = _mm_cmpgt_epi64(data, range3_l);
-//        print(range3_l_res);
+
         const __m128i range3_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range3_r), ones);
-//        print(range3_r_res);
+
         const __m128i range3_res = _mm_and_si128(range3_l_res, range3_r_res);
-//        print(range3_res);
 
         const __m128i range_res = _mm_or_si128(range1_res, _mm_or_si128(range2_res, range3_res));
-//        print(range_res);
 
         uint16_t range_res_mask = _mm_movemask_epi8(range_res);
-//        std::cout << "range_res_mask: " << range_res_mask << std::endl;
+
         if (0 == range_res_mask)
         {
 
@@ -550,7 +524,7 @@ int main(int argc, char ** argv)
 {
     if (argc < 4)
     {
-        std::cout << "param size error. First param is data size, second param is target data ratio, third parame is memory align size." << std::endl;
+        std::cout << "Param size error. First param is data size, second param is target data ratio, third parame is memory align size." << std::endl;
         return 0;
     }
     initTarget();
@@ -587,6 +561,8 @@ int main(int argc, char ** argv)
                 std::chrono::high_resolution_clock::now() - start;
         std::cout << "testDirectly Time: " << std::fixed << std::setprecision(6) << diff.count()
                   << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_res);
     }
 
     /// testAVX
@@ -601,6 +577,8 @@ int main(int argc, char ** argv)
                 std::chrono::high_resolution_clock::now() - start;
         std::cout << "testAVX Time: " << std::fixed << std::setprecision(6) << diff.count()
                   << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_res);
     }
 
     /// testSSE
@@ -615,6 +593,8 @@ int main(int argc, char ** argv)
                 std::chrono::high_resolution_clock::now() - start;
         std::cout << "testSSE Time: " << std::fixed << std::setprecision(6) << diff.count()
                   << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_res);
     }
 
     /// filterAVX
@@ -626,13 +606,16 @@ int main(int argc, char ** argv)
         std::vector<uint8_t> filter(aligned_filter, aligned_filter + size);
 
         const auto start = std::chrono::high_resolution_clock::now();
-        genFilterSSE(&filter[0], &data[0], size);
+        genFilter(&filter[0], &data[0], size);
         size_t res_size = filterAVX(&res[0], &filter[0], size, &data[0]);
 
         const std::chrono::duration<double> diff =
                 std::chrono::high_resolution_clock::now() - start;
         std::cout << "filterAVX Time: " << std::fixed << std::setprecision(6) << diff.count()
                   << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_filter);
+        std::free(aligned_res);
     }
 
     /// filterSSE
@@ -644,13 +627,16 @@ int main(int argc, char ** argv)
         std::vector<uint8_t> filter(aligned_filter, aligned_filter + size);
 
         const auto start = std::chrono::high_resolution_clock::now();
-        genFilterSSE(&filter[0], &data[0], size);
+        genFilter(&filter[0], &data[0], size);
         size_t res_size = filterSSE(&res[0], &filter[0], size, &data[0]);
 
         const std::chrono::duration<double> diff =
                 std::chrono::high_resolution_clock::now() - start;
         std::cout << "filterSSE Time: " << std::fixed << std::setprecision(6) << diff.count()
                   << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_filter);
+        std::free(aligned_res);
     }
 
     /// filterMethod
@@ -667,6 +653,73 @@ int main(int argc, char ** argv)
                 std::chrono::high_resolution_clock::now() - start;
         std::cout << "filterMethod Time: " << std::fixed << std::setprecision(6) << diff.count()
                   << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_res);
     }
 
+
+    /// genFilterSSE filterAVX
+    {
+        RowWapper * aligned_res = static_cast<RowWapper *>(std::aligned_alloc(align, size * sizeof(RowWapper)));
+        std::vector<RowWapper> res(aligned_res, aligned_res + size);
+
+        uint8_t * aligned_filter = static_cast<uint8_t *>(std::aligned_alloc(align, size * sizeof(uint8_t)));
+        std::vector<uint8_t> filter(aligned_filter, aligned_filter + size);
+
+        const auto start = std::chrono::high_resolution_clock::now();
+        genFilterSSE(&filter[0], &data[0], size);
+        size_t res_size = filterAVX(&res[0], &filter[0], size, &data[0]);
+
+        const std::chrono::duration<double> diff =
+                std::chrono::high_resolution_clock::now() - start;
+        std::cout << "genFilterSSE filterAVX Time: " << std::fixed << std::setprecision(6) << diff.count()
+                  << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_filter);
+        std::free(aligned_res);
+    }
+
+    /// genFilterSSE filterSSE
+    {
+        RowWapper * aligned_res = static_cast<RowWapper *>(std::aligned_alloc(align, size * sizeof(RowWapper)));
+        std::vector<RowWapper> res(aligned_res, aligned_res + size);
+
+        uint8_t * aligned_filter = static_cast<uint8_t *>(std::aligned_alloc(align, size * sizeof(uint8_t)));
+        std::vector<uint8_t> filter(aligned_filter, aligned_filter + size);
+
+        const auto start = std::chrono::high_resolution_clock::now();
+        genFilterSSE(&filter[0], &data[0], size);
+        size_t res_size = filterSSE(&res[0], &filter[0], size, &data[0]);
+
+        const std::chrono::duration<double> diff =
+                std::chrono::high_resolution_clock::now() - start;
+        std::cout << "genFilterSSE filterSSE Time: " << std::fixed << std::setprecision(6) << diff.count()
+                  << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_filter);
+        std::free(aligned_res);
+    }
+
+    /// genFilterSSE filterMethod
+    {
+        RowWapper * aligned_res = static_cast<RowWapper *>(std::aligned_alloc(align, size * sizeof(RowWapper)));
+        std::vector<RowWapper> res(aligned_res, aligned_res + size);
+
+        uint8_t * aligned_filter = static_cast<uint8_t *>(std::aligned_alloc(align, size * sizeof(uint8_t)));
+        std::vector<uint8_t> filter(aligned_filter, aligned_filter + size);
+
+        const auto start = std::chrono::high_resolution_clock::now();
+        genFilterSSE(&filter[0], &data[0], size);
+        size_t res_size = filterMethod(&res[0], &filter[0], size, &data[0]);
+
+        const std::chrono::duration<double> diff =
+                std::chrono::high_resolution_clock::now() - start;
+        std::cout << "genFilterSSE filterMethod Time: " << std::fixed << std::setprecision(6) << diff.count()
+                  << " sec " << "res_size: " << res_size << std::endl;
+
+        std::free(aligned_filter);
+        std::free(aligned_res);
+    }
+
+    std::free(aligned_data);
 }
