@@ -621,7 +621,9 @@ int main(int argc, char ** argv)
     {
         RowWapper * aligned_res = static_cast<RowWapper *>(std::aligned_alloc(align, size * sizeof(RowWapper)));
         std::vector<RowWapper> res(aligned_res, aligned_res + size);
-        std::vector<uint8_t> filter(size);
+
+        uint8_t * aligned_filter = static_cast<uint8_t *>(std::aligned_alloc(align, size * sizeof(uint8_t)));
+        std::vector<uint8_t> filter(aligned_filter, aligned_filter + size);
 
         const auto start = std::chrono::high_resolution_clock::now();
         genFilterSSE(&filter[0], &data[0], size);
@@ -637,7 +639,9 @@ int main(int argc, char ** argv)
     {
         RowWapper * aligned_res = static_cast<RowWapper *>(std::aligned_alloc(align, size * sizeof(RowWapper)));
         std::vector<RowWapper> res(aligned_res, aligned_res + size);
-        std::vector<uint8_t> filter(size);
+
+        uint8_t * aligned_filter = static_cast<uint8_t *>(std::aligned_alloc(align, size * sizeof(uint8_t)));
+        std::vector<uint8_t> filter(aligned_filter, aligned_filter + size);
 
         const auto start = std::chrono::high_resolution_clock::now();
         genFilterSSE(&filter[0], &data[0], size);
