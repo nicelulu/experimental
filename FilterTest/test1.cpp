@@ -234,7 +234,12 @@ void genFilterSSE(uint8_t * filter, const RowWapper * row_wappers, int row_size)
         }
         else if (0xFFFF == range_res_mask)
         {
-            *reinterpret_cast<uint16_t *>(filter_pos) = 1;
+            union value
+            {
+                uint8_t a[2] = {1,1};
+                uint16_t b;
+            };
+            *reinterpret_cast<uint16_t *>(filter_pos) = value().b;
         }
         else
         {
