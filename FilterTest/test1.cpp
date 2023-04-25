@@ -204,17 +204,17 @@ void genFilterSSE(uint8_t * filter, const RowWapper * row_wappers, int row_size)
 
         const __m128i range1_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range1_r), ones);
 
-        const __m128i range1_res = _mm_and_si128(range1_l_res, range1_r_res);
-
         const __m128i range2_l_res = _mm_cmpgt_epi64(data, range2_l);
 
         const __m128i range2_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range2_r), ones);
 
-        const __m128i range2_res = _mm_and_si128(range2_l_res, range2_r_res);
-
         const __m128i range3_l_res = _mm_cmpgt_epi64(data, range3_l);
 
         const __m128i range3_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range3_r), ones);
+
+        const __m128i range1_res = _mm_and_si128(range1_l_res, range1_r_res);
+
+        const __m128i range2_res = _mm_and_si128(range2_l_res, range2_r_res);
 
         const __m128i range3_res = _mm_and_si128(range3_l_res, range3_r_res);
 
@@ -321,17 +321,17 @@ size_t testAVX(RowWapper * res, const RowWapper * row_wappers, int row_size)
 
         const __m256i range1_r_res = _mm256_xor_si256(_mm256_cmpgt_epi64(data, range1_r), ones);
 
-        const __m256i range1_res = _mm256_and_si256(range1_l_res, range1_r_res);
-
         const __m256i range2_l_res = _mm256_cmpgt_epi64(data, range2_l);
 
         const __m256i range2_r_res = _mm256_xor_si256(_mm256_cmpgt_epi64(data, range2_r), ones);
 
-        const __m256i range2_res = _mm256_and_si256(range2_l_res, range2_r_res);
-
         const __m256i range3_l_res = _mm256_cmpgt_epi64(data, range3_l);
 
         const __m256i range3_r_res = _mm256_xor_si256(_mm256_cmpgt_epi64(data, range3_r), ones);
+
+        const __m256i range1_res = _mm256_and_si256(range1_l_res, range1_r_res);
+
+        const __m256i range2_res = _mm256_and_si256(range2_l_res, range2_r_res);
 
         const __m256i range3_res = _mm256_and_si256(range3_l_res, range3_r_res);
 
@@ -399,17 +399,17 @@ size_t testSSE(RowWapper * res, const RowWapper * row_wappers, int row_size)
 
         const __m128i range1_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range1_r), ones);
 
-        const __m128i range1_res = _mm_and_si128(range1_l_res, range1_r_res);
-
         const __m128i range2_l_res = _mm_cmpgt_epi64(data, range2_l);
 
         const __m128i range2_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range2_r), ones);
 
-        const __m128i range2_res = _mm_and_si128(range2_l_res, range2_r_res);
-
         const __m128i range3_l_res = _mm_cmpgt_epi64(data, range3_l);
 
         const __m128i range3_r_res = _mm_xor_si128(_mm_cmpgt_epi64(data, range3_r), ones);
+
+        const __m128i range1_res = _mm_and_si128(range1_l_res, range1_r_res);
+
+        const __m128i range2_res = _mm_and_si128(range2_l_res, range2_r_res);
 
         const __m128i range3_res = _mm_and_si128(range3_l_res, range3_r_res);
 
@@ -452,73 +452,6 @@ size_t testSSE(RowWapper * res, const RowWapper * row_wappers, int row_size)
     return res_pos - res;
 }
 
-/*
- * test result:
- *
- * root$ ./test1 10000000 1 32
- * testDirectly Time: 0.015622 sec res_size: 10000000
- * testAVX Time: 0.014737 sec res_size: 10000000
- * testSSE Time: 0.016422 sec res_size: 10000000
- * filterAVX Time: 0.017115 sec res_size: 10000000
- * filterSSE Time: 0.021388 sec res_size: 10000000
- * filterMethod Time: 0.023430 sec res_size: 10000000
- *
- * root$ ./test1 10000000 2 32
- * testDirectly Time: 0.118058 sec res_size: 5000009
- * testAVX Time: 0.062876 sec res_size: 5000009
- * testSSE Time: 0.064128 sec res_size: 5000009
- * filterAVX Time: 0.051724 sec res_size: 5000009
- * filterSSE Time: 0.051664 sec res_size: 5000009
- * filterMethod Time: 0.055166 sec res_size: 5000009
- *
- * root$ ./test1 10000000 4 32
- * testDirectly Time: 0.053950 sec res_size: 2500372
- * testAVX Time: 0.052327 sec res_size: 2500372
- * testSSE Time: 0.051610 sec res_size: 2500372
- * filterAVX Time: 0.037639 sec res_size: 2500372
- * filterSSE Time: 0.037248 sec res_size: 2500372
- * filterMethod Time: 0.041703 sec res_size: 2500372
- *
- * root$ ./test1 10000000 8 32
- * testDirectly Time: 0.035610 sec res_size: 1249591
- * testAVX Time: 0.038011 sec res_size: 1249591
- * testSSE Time: 0.032496 sec res_size: 1249591
- * filterAVX Time: 0.026949 sec res_size: 1249591
- * filterSSE Time: 0.027121 sec res_size: 1249591
- * filterMethod Time: 0.030936 sec res_size: 1249591
- *
- * root$ ./test1 10000000 10 32
- * testDirectly Time: 0.028327 sec res_size: 999717
- * testAVX Time: 0.032776 sec res_size: 999717
- * testSSE Time: 0.028572 sec res_size: 999717
- * filterAVX Time: 0.025032 sec res_size: 999717
- * filterSSE Time: 0.025067 sec res_size: 999717
- * filterMethod Time: 0.028059 sec res_size: 999717
- *
- * root$ ./test1 10000000 15 32
- * testDirectly Time: 0.096796 sec res_size: 665687
- * testAVX Time: 0.025170 sec res_size: 665687
- * testSSE Time: 0.023091 sec res_size: 665687
- * filterAVX Time: 0.023990 sec res_size: 665687
- * filterSSE Time: 0.023742 sec res_size: 665687
- * filterMethod Time: 0.026712 sec res_size: 665687
- *
- * root$ ./test1 10000000 18 32
- * testDirectly Time: 0.058699 sec res_size: 555783
- * testAVX Time: 0.022826 sec res_size: 555783
- * testSSE Time: 0.022162 sec res_size: 555783
- * filterAVX Time: 0.023304 sec res_size: 555783
- * filterSSE Time: 0.022978 sec res_size: 555783
- * filterMethod Time: 0.026885 sec res_size: 555783
- *
- * root$ ./test1 10000000 20 32
- * testDirectly Time: 0.027541 sec res_size: 499292
- * testAVX Time: 0.021488 sec res_size: 499292
- * testSSE Time: 0.020572 sec res_size: 499292
- * filterAVX Time: 0.022963 sec res_size: 499292
- * filterSSE Time: 0.022361 sec res_size: 499292
- * filterMethod Time: 0.027231 sec res_size: 499292
- */
 
 int main(int argc, char ** argv)
 {
