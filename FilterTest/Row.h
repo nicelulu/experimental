@@ -14,7 +14,7 @@ typedef struct __attribute__((packed)) Row
 #endif
 
 #ifndef IS_LITTLE_ENDIAN
-typedef struct Row
+typedef struct __attribute__((packed)) Row
 {
     int32_t a;
     int32_t b;
